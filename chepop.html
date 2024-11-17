@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Environmental Pollution Data</title>
+    <title>Pollution Data</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
     <style>
         body {
@@ -65,6 +65,13 @@
             transform: translateX(-50%);
             z-index: 1001;
         }
+        .bullet {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
         .popup {
             position: fixed;
             top: 50%;
@@ -96,7 +103,7 @@
 </head>
 <body>
     <input type="text" id="cityName" placeholder="Enter city name"><br>
-    <button onclick="fetchAllPollutionData()">Get Pollution Data</button>
+    <button onclick="fetchPollutionData()">Get Pollution Data</button>
     <p id="alertMessage"></p>
     <div id="map"></div>
     <div id="popup" class="popup"></div>
@@ -106,105 +113,123 @@
         let map;
         let marker;
 
-        // Function to fetch all pollution data types
-        function fetchAllPollutionData() {
+        function fetchPollutionData() {
             const city = document.getElementById('cityName').value;
-            if (!city) {
-                displayError(null, new Error('Please enter a city name.'));
-                return;
-            }
-
-            const apiKey = 'd64beaeafea7d4fd55cf143de6a1e493'; // OpenWeatherMap API key
+            const apiKey = 'd64beaeafea7d4fd55cf143de6a1e493'; // Your OpenWeatherMap API key
 
             const geocodingUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${city}&limit=1&appid=${apiKey}`;
+
             fetch(geocodingUrl)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(locationData => {
                     if (locationData.length > 0) {
                         const { lat, lon } = locationData[0];
+                        const apiUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`;
+
                         updateMap(lat, lon, city);
-                        fetchAirPollutionData(lat, lon, city);
-                        fetchWaterPollutionData(lat, lon, city); // Placeholder function
-                        fetchLandPollutionData(lat, lon, city); // Placeholder function
-                        fetchNoisePollutionData(lat, lon, city); // Placeholder function
+                        return fetch(apiUrl);
                     } else {
                         throw new Error('Location not found');
                     }
                 })
-                .catch(error => displayError(city, error));
-        }
-
-        // Function to fetch air pollution data
-        function fetchAirPollutionData(lat, lon, city) {
-            const apiKey = 'd64beaeafea7d4fd55cf143de6a1e493';
-            const apiUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${apiKey}`;
-            
-            fetch(apiUrl)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const pollutionLevel = data.list[0].main.aqi;
-                    displayPollutionLevel(city, 'Air Quality', pollutionLevel);
+                    // Simulate water, land, and noise pollution levels
+                    const waterPollutionLevel = Math.floor(Math.random() * 5) + 1;
+                    const landPollutionLevel = Math.floor(Math.random() * 5) + 1;
+                    const noisePollutionLevel = Math.floor(Math.random() * 5) + 1;
+
+                    displayPollutionLevel(city, pollutionLevel, waterPollutionLevel, landPollutionLevel, noisePollutionLevel);
                 })
-                .catch(error => displayError(city, error));
-        }
-
-        // Placeholder function to fetch water pollution data
-        function fetchWaterPollutionData(lat, lon, city) {
-            const waterPollutionLevel = Math.floor(Math.random() * 5) + 1; // Simulated data
-            displayPollutionLevel(city, 'Water Quality', waterPollutionLevel);
-        }
-
-        // Placeholder function to fetch land pollution data
-        function fetchLandPollutionData(lat, lon, city) {
-            const landPollutionLevel = Math.floor(Math.random() * 5) + 1; // Simulated data
-            displayPollutionLevel(city, 'Land Quality', landPollutionLevel);
-        }
-
-        // Placeholder function to fetch noise pollution data
-        function fetchNoisePollutionData(lat, lon, city) {
-            const noisePollutionLevel = Math.floor(Math.random() * 5) + 1; // Simulated data
-            displayPollutionLevel(city, 'Noise Level', noisePollutionLevel);
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    displayError(city, error);
+                });
         }
 
         function updateMap(lat, lon, city) {
             if (map) {
                 map.setView([lat, lon], 13);
                 if (marker) {
-                    marker.setLatLng([lat, lon]).bindPopup(`<b>${city}</b><br>Coordinates: ${lat}, ${lon}`).openPopup();
+                    marker.setLatLng([lat, lon]).bindPopup(`<b>${city}</b>`).openPopup();
                 } else {
-                    marker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>${city}</b><br>Coordinates: ${lat}, ${lon}`).openPopup();
+                    marker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>${city}</b>`).openPopup();
                 }
             } else {
                 map = L.map('map').setView([lat, lon], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
-                marker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>${city}</b><br>Coordinates: ${lat}, ${lon}`).openPopup();
+                marker = L.marker([lat, lon]).addTo(map).bindPopup(`<b>${city}</b>`).openPopup();
             }
         }
 
-        function displayPollutionLevel(city, pollutionType, pollutionLevel) {
+        function displayPollutionLevel(city, airPollutionLevel, waterPollutionLevel, landPollutionLevel, noisePollutionLevel) {
             const alertMessage = document.getElementById('alertMessage');
-            const messageMap = {
-                1: { text: "Good", color: "green" },
-                2: { text: "Moderate", color: "blue" },
-                3: { text: "Unhealthy for sensitive groups", color: "orange" },
-                4: { text: "Unhealthy", color: "red" },
-                5: { text: "Very Unhealthy", color: "purple" }
-            };
+            const popup = document.getElementById('popup');
 
-            const { text, color } = messageMap[pollutionLevel] || { text: "Unknown", color: "gray" };
-            const message = `<strong>${pollutionType}</strong> in ${city} is ${text}`;
-            alertMessage.innerHTML += `<span style="color: ${color};">${message}</span><br>`;
+            function getPollutionMessage(level) {
+                switch (level) {
+                    case 1:
+                        return { message: 'Good', color: 'green', bulletColor: 'green' };
+                    case 2:
+                        return { message: 'Moderate', color: 'yellow', bulletColor: 'yellow' };
+                    case 3:
+                        return { message: 'Unhealthy for Sensitive Groups', color: 'orange', bulletColor: 'orange' };
+                    case 4:
+                        return { message: 'Unhealthy', color: 'red', bulletColor: 'red' };
+                    case 5:
+                        return { message: 'Very Unhealthy', color: 'purple', bulletColor: 'purple' };
+                    default:
+                        return { message: 'Data unavailable', color: 'gray', bulletColor: 'gray' };
+                }
+            }
 
-            if (marker) {
-                marker.bindPopup(`<b>${city}</b><br><strong>${pollutionType}:</strong> ${text}`).openPopup();
+            const airMessage = getPollutionMessage(airPollutionLevel);
+            const waterMessage = getPollutionMessage(waterPollutionLevel);
+            const landMessage = getPollutionMessage(landPollutionLevel);
+            const noiseMessage = getPollutionMessage(noisePollutionLevel);
+
+            alertMessage.innerHTML = `
+                <span class="bullet" style="background-color: ${airMessage.bulletColor};"></span> 
+                <span style="color: ${airMessage.color};">Air Pollution: ${airMessage.message}</span><br>
+                <span class="bullet" style="background-color: ${waterMessage.bulletColor};"></span> 
+                <span style="color: ${waterMessage.color};">Water Pollution: ${waterMessage.message}</span><br>
+                <span class="bullet" style="background-color: ${landMessage.bulletColor};"></span> 
+                <span style="color: ${landMessage.color};">Land Pollution: ${landMessage.message}</span><br>
+                <span class="bullet" style="background-color: ${noiseMessage.bulletColor};"></span> 
+                <span style="color: ${noiseMessage.color};">Noise Pollution: ${noiseMessage.message}</span>
+            `;
+
+            let popupMessage = '';
+            if (airPollutionLevel >= 4 || waterPollutionLevel >= 4 || landPollutionLevel >= 4 || noisePollutionLevel >= 4) {
+    popupMessage += 'Consider for changing the city as soon as possible';
+}-
+
+            if (popupMessage) {
+                popup.textContent = popupMessage;
+                popup.classList.add('show');
+                setTimeout(() => {
+                    popup.classList.remove('show');
+                }, 10000); // Hide popup after 5 seconds
             }
         }
 
         function displayError(city, error) {
             const alertMessage = document.getElementById('alertMessage');
-            alertMessage.innerHTML += `<span style="color: red;"><strong>Error fetching data for ${city || "this location"}:</strong> ${error.message}</span><br>`;
+            alertMessage.textContent = `Could not fetch pollution data for ${city}: ${error.message}`;
+            alertMessage.style.color = 'red';
         }
     </script>
 </body>
